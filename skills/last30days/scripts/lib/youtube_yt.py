@@ -531,6 +531,30 @@ def _fetch_transcript_direct(
     return vtt_text
 
 
+def _ytdlp_sub_langs() -> str:
+    """Caption languages to try, from LAST30DAYS_YT_SUB_LANGS (default en,es,pt)."""
+    raw = os.environ.get("LAST30DAYS_YT_SUB_LANGS", "").strip()
+    if not raw:
+        return "en,es,pt"
+    return ",".join(code.strip().lower() for code in raw.split(",") if code.strip()) or "en,es,pt"
+
+
+def _pick_ytdlp_vtt(video_id: str, temp_dir: str, priority: List[str]) -> Optional[Path]:
+    """Return the best on-disk VTT match for video_id, preferring priority order."""
+    matches = list(Path(temp_dir).glob(f"{video_id}*.vtt"))
+    if not matches:
+        return None
+    priority_index = {code: i for i, code in enumerate(priority)}
+
+    def rank(p: Path) -> int:
+        stem = p.stem
+        suffix = stem[len(video_id) + 1:] if stem.startswith(video_id + ".") else ""
+        code = suffix.split("-")[0].split(".")[0]
+        return priority_index.get(code, len(priority_index))
+
+    return sorted(matches, key=rank)[0]
+
+
 def _transcript_backoff(video_id: str, attempt: int) -> float:
     """Backoff seconds before a transcript retry.
 
@@ -543,14 +567,9 @@ def _transcript_backoff(video_id: str, attempt: int) -> float:
 
 def _read_vtt(video_id: str, temp_dir: str) -> Optional[str]:
     """Return the VTT text yt-dlp wrote for ``video_id``, or None if absent."""
-    # yt-dlp may save as .en.vtt or an en variant like .en-orig.vtt
-    vtt_path = Path(temp_dir) / f"{video_id}.en.vtt"
-    if not vtt_path.exists():
-        for p in Path(temp_dir).glob(f"{video_id}*.vtt"):
-            vtt_path = p
-            break
-        else:
-            return None
+    vtt_path = _pick_ytdlp_vtt(video_id, temp_dir, _ytdlp_sub_langs().split(","))
+    if vtt_path is None:
+        return None
 
     try:
         return vtt_path.read_text(encoding="utf-8", errors="replace")
@@ -583,7 +602,7 @@ def _fetch_transcript_ytdlp(
         "--ignore-config",
         "--no-cookies-from-browser",
         "--write-auto-subs",
-        "--sub-lang", "en",
+        "--sub-lang", _ytdlp_sub_langs(),
         "--sub-format", "vtt",
         "--skip-download",
         "--no-warnings",
