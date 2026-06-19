@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP Go tests (`mcp/`) now run in CI on every push/PR alongside the Python test suite, so MCP server regressions are caught before merge ([#621](https://github.com/mvanhorn/last30days-skill/issues/621))
+
 ## [3.8.0] - 2026-06-21
 
 ### Added
