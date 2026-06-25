@@ -53,6 +53,8 @@ def publish_html(
         result = json.loads(body)
     except json.JSONDecodeError as exc:
         raise HtmlPublishError("publish endpoint returned non-JSON response") from exc
+    if not isinstance(result, dict):
+        raise HtmlPublishError("publish endpoint returned unexpected JSON response")
 
     url = result.get("url")
     if not isinstance(url, str) or not url.startswith("https://"):

@@ -63,7 +63,7 @@ def _diag() -> dict[str, object]:
 
 
 class _FakeResponse:
-    def __init__(self, payload: dict[str, object]):
+    def __init__(self, payload: object):
         self.payload = payload
 
     def __enter__(self):
@@ -116,6 +116,13 @@ class HtmlPublishModuleTests(unittest.TestCase):
             )
 
         with self.assertRaisesRegex(html_publish.HtmlPublishError, "HTML content is required"):
+            html_publish.publish_html("<html></html>", opener=opener)
+
+    def test_publish_rejects_json_response_that_is_not_an_object(self):
+        def opener(_request, timeout):
+            return _FakeResponse(["https://site.ht-ml.app"])
+
+        with self.assertRaisesRegex(html_publish.HtmlPublishError, "unexpected JSON response"):
             html_publish.publish_html("<html></html>", opener=opener)
 
 
